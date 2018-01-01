@@ -49,6 +49,9 @@ func main() {
 	r.Handle("/projects/{id:[a-z]+}", ViewProject(db)).Methods(http.MethodGet)
 	r.Handle("/projects/{id:[a-z]+}/profiles/", AssignProject(db)).Methods(http.MethodPost).Name("project.profiles.add")
 
+	r.Handle("/shifts/", ListShifts(db)).Methods(http.MethodGet)
+	r.Handle("/shifts/", AssignShift(db)).Methods(http.MethodPost)
+
 	if err := http.ListenAndServe(*addr, r); err != nil {
 		log.Fatalln(err)
 	}

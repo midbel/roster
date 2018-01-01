@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+  "github.com/gorilla/mux"
 )
 
 type Shift struct {
@@ -19,9 +21,32 @@ type Shift struct {
 }
 
 func ListShifts(db *sql.DB) http.Handler {
-	const q = `select pk, profile, position, project, location, dtstart, dtend from vshifts`
+	const q = `select pk, profile, position, project, location, dtstart, dtend from vshifts where dtstart between $1 and $2 or dtend between $1 and $2`
 	f := func(r *http.Request) (interface{}, error) {
-		switch rs, err := db.Query(q); err {
+    var fd, td time.Time
+    switch n, q := mux.CurrentRoute(r), r.URL.Query(); n.GetName() {
+    default:
+      d := time.Now()
+      fd, td = d.Truncate(time.Hour*24), d.Add(time.Hour*24).Truncate(time.Hour*24)
+      return nil, nil
+    case "shifts.list.date":
+      d, err := time.Parse("2006-01-02", q.Get("dtstamp"))
+      if err != nil {
+        return nil, err
+      }
+      fd, td = d.Truncate(time.Hour*24), d.Add(time.Hour*24).Truncate(time.Hour*24)
+    case "shifts.list.range":
+      var err error
+      fd, err = time.Parse("2006-01-02", q.Get("dtstart"))
+      if err != nil {
+        return nil, err
+      }
+      td, err = time.Parse("2006-01-02", q.Get("dtend"))
+      if err != nil {
+        return nil, err
+      }
+    }
+		switch rs, err := db.Query(q, fd, td); err {
 		case nil:
 			defer rs.Close()
 
